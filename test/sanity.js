@@ -1,4 +1,4 @@
-import test from 'ava';
+import test from './tester.js';
 
 test('sync test', (t) => {
   t.pass();

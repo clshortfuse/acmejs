@@ -254,14 +254,17 @@ export function encodeOctetString(entry) {
 }
 
 /**
+ * https://www.rfc-editor.org/rfc/rfc4055#section-2.1
  * @param {string} oid
- * @param {number[]} [params]
+ * @param {number[]|string|null} [params] DER or OID
  * @return {number[]}
  */
 export function encodeAlgorithmIdentifer(oid, params) {
   return encodeSequence(
     encodeObjectIdentifier(oid),
-    params ?? encodeNull(),
+    typeof params === 'string'
+      ? encodeObjectIdentifier(oid)
+      : params ?? encodeNull(), // Supposed to optional, but made mandatory for RSA compatibility
   );
 }
 

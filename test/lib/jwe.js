@@ -1,6 +1,5 @@
-import test from 'ava';
-
 import { encodeBase64UrlAsString } from '../../utils/base64.js';
+import test from '../tester.js';
 
 test('rfc7516 A.1.1', (t) => {
   const protectedHeader = { alg: 'RSA-OAEP', enc: 'A256GCM' };

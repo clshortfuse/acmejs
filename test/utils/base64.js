@@ -1,6 +1,5 @@
-import test from 'ava';
-
 import { decodeBase64AsArray, decodeBase64AsUtf8, encodeBase64AsArray, encodeBase64AsString } from '../../utils/base64.js';
+import test from '../tester.js';
 
 const textEncoder = new TextEncoder();
 

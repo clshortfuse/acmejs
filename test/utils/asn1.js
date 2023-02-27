@@ -1,7 +1,6 @@
-import test from 'ava';
-
 import { decodeDER, readLength, readObjectIdentifier, readSignedNumber, readUnsignedNumber, writeLength, writeSignedNumber, writeUnsignedNumber } from '../../utils/asn1.js';
-import { derFromPEM } from '../../utils/pkcs.js';
+import { derFromPEM } from '../../utils/certificate.js';
+import test from '../tester.js';
 
 test('writeUnsignedNumber()', (t) => {
   t.deepEqual(writeUnsignedNumber(1), [1]);

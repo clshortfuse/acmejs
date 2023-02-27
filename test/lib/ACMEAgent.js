@@ -1,6 +1,5 @@
-import test from 'ava';
-
 import Agent from '../../lib/ACMEAgent.js';
+import test from '../tester.js';
 
 const LETS_ENCRYPT_STAGE_URL = 'https://acme-staging-v02.api.letsencrypt.org/directory';
 
