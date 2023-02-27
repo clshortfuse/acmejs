@@ -16,9 +16,14 @@ Uses:
 | Supported                                                                                          |     67 |      68 |     14 | 18.0.0 | 1.17 |
 
 *Used by helper functions
+
 †Used by helper ASN1 operations
 
-*Compatibility may be extended via polyfills (not included)*
+Notes:
+
+* Compatibility may be extended via polyfills (not included)
+* Deno does not support ECDSA P-521
+
 
 # Libraries
 
@@ -41,9 +46,9 @@ Uses:
  * [ASN1 Encoder/Decoder](./utils/asn1.js)
  * [Base64 Encoder/Decoder](./utils/base64.js)
  * [Bit Functions](./utils/bit.js)
- * [SubtleCrypto NodeJS Wrapper](./utils/crypto.js)
+ * [SubtleCrypto Wrapper](./utils/crypto.js)
  * [DNS Resolver](./utils/dns.js)
- * [PKCS1, PKCS8, PKCS10 Functions](./utils/pkcs8.js)
+ * [PKCS1, PKCS8, PKCS10, SPKI, EC, PEM Functions](./utils/certificate.js)
  * [UTF-8 Decoder](./utils/utf8.js)
 
 # Usage
