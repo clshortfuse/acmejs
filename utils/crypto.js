@@ -1,7 +1,8 @@
 /* eslint-disable no-bitwise */
 /** @typedef {CryptoKey} CryptoUtilsExport */
 
-import { encodeBase64AsString } from './base64.js';
+import { parseAlgorithmIdentifier } from '../lib/jwa.js';
+
 import { octetFromUtf8 } from './utf8.js';
 
 /** @type {Crypto} */
@@ -17,101 +18,10 @@ export async function importJWK(jwk, algorithmIdentifier) {
   return await crypto.subtle.importKey(
     'jwk',
     jwk,
-    algorithmIdentifier,
+    parseAlgorithmIdentifier(algorithmIdentifier),
     false,
     jwk.key_ops ?? ['sign', 'verify'],
   );
-}
-
-/**
- * @param {JWK} jwk
- * @param {Parameters<SubtleCrypto['importKey']>[2]} algorithmIdentifier
- * @return {Promise<string>}
- */
-export async function pkcs8FromJWK(jwk, algorithmIdentifier) {
-  const key = await crypto.subtle.importKey(
-    'jwk',
-    jwk,
-    algorithmIdentifier,
-    true,
-    ['sign'],
-  );
-
-  const pkcs8 = (await crypto.subtle.exportKey('pkcs8', key));
-  return encodeBase64AsString(pkcs8);
-}
-
-/**
- * @param {JWK} jwk
- * @param {Parameters<SubtleCrypto['importKey']>[2]} algorithmIdentifier
- * @return {Promise<string>}
- */
-export async function pkcs1FromJWK(jwk, algorithmIdentifier) {
-  const key = await crypto.subtle.importKey(
-    'jwk',
-    jwk,
-    algorithmIdentifier,
-    true,
-    ['sign'],
-  );
-
-  const pkcs8 = (await crypto.subtle.exportKey('pkcs8', key));
-
-  return encodeBase64AsString(pkcs1);
-}
-
-/**
- * @param {JWK} jwk
- * @param {Parameters<SubtleCrypto['importKey']>[2]} algorithmIdentifier
- * @return {Promise<string>}
- */
-export async function spkiFromJWK(jwk, algorithmIdentifier) {
-  const key = await crypto.subtle.importKey(
-    'jwk',
-    jwk,
-    algorithmIdentifier,
-    true,
-    ['verify'],
-  );
-
-  const spki = (await crypto.subtle.exportKey('spki', key));
-  return encodeBase64AsString(spki);
-}
-
-/**
- * @param {Uint8Array} pkcs8 PKCS8 in DER Format
- * @param {Parameters<SubtleCrypto['importKey']>[2]} algorithmIdentifier
- * @return {Promise<JWK>}
- */
-export async function jwkFromPKCS8(pkcs8, algorithmIdentifier) {
-  const key = await crypto.subtle.importKey(
-    'pkcs8',
-    pkcs8,
-    algorithmIdentifier,
-    true,
-    ['sign'],
-  );
-
-  const jwk = /** @type {JWK} */ (await crypto.subtle.exportKey('jwk', key));
-  return jwk;
-}
-
-/**
- * @param {Uint8Array} spki
- * @param {Parameters<SubtleCrypto['importKey']>[2]} algorithmIdentifier
- * @return {Promise<JWK>}
- */
-export async function jwkFromSPKI(spki, algorithmIdentifier) {
-  const key = await crypto.subtle.importKey(
-    'spki',
-    spki,
-    algorithmIdentifier,
-    true,
-    ['verify'],
-  );
-
-  const jwk = /** @type {JWK} */ (await crypto.subtle.exportKey('jwk', key));
-  return jwk;
 }
 
 /**
@@ -165,4 +75,3 @@ export async function digest(algorithm, data) {
   const binary = typeof data === 'string' ? Uint8Array.from(octetFromUtf8(data)) : data;
   return await crypto.subtle.digest(algorithm, binary);
 }
-

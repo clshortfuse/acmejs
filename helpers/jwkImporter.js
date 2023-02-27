@@ -1,15 +1,15 @@
 import { ASN_OID, decodeDER } from '../utils/asn1.js';
-import { derFromPKCS8 } from '../utils/pkcs.js';
+import { derFromPrivateKeyInformation } from '../utils/certificate.js';
 
 /**
  * Automatically suggest an importKey algorithm
  * @see https://datatracker.ietf.org/doc/html/rfc5208#section-5
  * @see https://datatracker.ietf.org/doc/html/rfc2313#section-11
- * @param {string|Uint8Array} pkcs8
+ * @param {string|Uint8Array} privateKeyInformation pkcs8
  * @return {Parameters<SubtleCrypto['importKey']>[2]}
  */
-export function suggestImportKeyAlgorithm(pkcs8) {
-  const der = derFromPKCS8(pkcs8);
+export function suggestImportKeyAlgorithm(privateKeyInformation) {
+  const der = derFromPrivateKeyInformation(privateKeyInformation);
   const [
     [privateKeyInfoType, [
       [versionType, version],
@@ -17,11 +17,11 @@ export function suggestImportKeyAlgorithm(pkcs8) {
       [privateKeyType, privateKey], // Skip validation
     ]],
   ] = decodeDER(der);
-  if (privateKeyInfoType !== 'SEQUENCE') throw new Error('Invalid PKCS8');
-  if (versionType !== 'INTEGER') throw new Error('Invalid PKCS8');
-  if (version !== 0) throw new Error('Unsupported PKCS8 Version');
+  if (privateKeyInfoType !== 'SEQUENCE') throw new Error('Invalid Private Key Information');
+  if (versionType !== 'INTEGER') throw new Error('Invalid Private Key Information');
+  if (version !== 0) throw new Error('Unsupported Private Key Information Version');
   const [algorithmIdentifierSequenceType, algorithmIdentifierSequenceValues] = algorithmIdentifierSequence;
-  if (algorithmIdentifierSequenceType !== 'SEQUENCE') throw new Error('Invalid PKCS8');
+  if (algorithmIdentifierSequenceType !== 'SEQUENCE') throw new Error('Invalid Private Key Information');
 
   /** @type {Set<string>} */
   const objectIdentifiers = new Set();

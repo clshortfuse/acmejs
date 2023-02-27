@@ -1,10 +1,9 @@
 /* eslint-disable no-await-in-loop */
 import ACMEAgent from '../lib/ACMEAgent.js';
 import { encodeBase64UrlAsString } from '../utils/base64.js';
-import { jwkFromPKCS8 } from '../utils/crypto.js';
+import { createCSR, derFromPrivateKeyInformation, jwkFromPrivateKeyInformation } from '../utils/certificate.js';
 import { checkDnsTxt } from '../utils/dns.js';
 import { dispatchEvent, dispatchExtendableEvent } from '../utils/events.js';
-import { createPKCS10, derFromPKCS8 } from '../utils/pkcs.js';
 
 import { suggestImportKeyAlgorithm } from './jwkImporter.js';
 
@@ -93,7 +92,7 @@ export async function authorizeOrder({ order, agent, eventTarget }) {
  * @param {Object} options
  * @param {boolean} options.tosAgreed
  * @param {string} options.email
- * @param {JWK|string|Uint8Array} options.jwk Account JWK or PKCS8
+ * @param {JWK|string|Uint8Array} options.jwk Account JWK or PrivateKeyInformation (PKCS8)
  * @param {string} options.domain
  * @param {string} [options.orderUrl] existing order URL (blank for new)
  * @param {string} [options.directoryUrl] defaults to LetsEncrypt Production
@@ -104,7 +103,7 @@ export async function authorizeOrder({ order, agent, eventTarget }) {
  * @param {string} [options.csr.localityName]
  * @param {string} [options.csr.stateOrProvinceName]
  * @param {string} [options.csr.countryName]
- * @param {JWK|string|Uint8Array} options.csr.jwk CSR JWK or PKCS8
+ * @param {JWK|string|Uint8Array} options.csr.jwk CSR JWK or PrivateKeyInformation (PKCS8)
  * @return {Promise<any>}
  */
 export async function getWildcardCertificate(options) {
@@ -114,15 +113,15 @@ export async function getWildcardCertificate(options) {
   let csrJWK;
 
   if (typeof options.jwk === 'string' || options.jwk instanceof Uint8Array) {
-    const der = derFromPKCS8(options.jwk);
-    accountJWK = await jwkFromPKCS8(der, suggestImportKeyAlgorithm(der));
+    const der = derFromPrivateKeyInformation(options.jwk);
+    accountJWK = await jwkFromPrivateKeyInformation(der, suggestImportKeyAlgorithm(der));
   } else {
     accountJWK = options.jwk;
   }
 
   if (typeof options.csr.jwk === 'string' || options.csr.jwk instanceof Uint8Array) {
-    const der = derFromPKCS8(options.csr.jwk);
-    csrJWK = await jwkFromPKCS8(der, suggestImportKeyAlgorithm(der));
+    const der = derFromPrivateKeyInformation(options.csr.jwk);
+    csrJWK = await jwkFromPrivateKeyInformation(der, suggestImportKeyAlgorithm(der));
   } else {
     csrJWK = options.csr.jwk;
   }
@@ -163,7 +162,7 @@ export async function getWildcardCertificate(options) {
   order = await agent.fetchOrder(orderUrl);
 
   if (order.status === 'ready') {
-    const csrDER = await createPKCS10({
+    const csrDER = await createCSR({
       commonName: `*.${options.domain}`,
       altNames: [`*.${options.domain}`, options.domain],
       ...options.csr,
