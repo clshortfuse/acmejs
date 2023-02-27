@@ -1,0 +1,190 @@
+{
+  "extends": [
+    "airbnb-base",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:jsdoc/recommended",
+    "plugin:n/recommended",
+    "plugin:unicorn/recommended"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaFeatures": {
+      "impliedStrict": true
+    },
+    "ecmaVersion": 2020,
+    "sourceType": "module",
+    "project": "./tsconfig.json"
+  },
+  "plugins": [
+    "@typescript-eslint",
+    "jsdoc",
+    "unicorn"
+  ],
+  "root": true,
+  "rules": {
+    "object-curly-newline": ["error", {
+      "ObjectExpression": {  "multiline": true, "consistent": true },
+      "ObjectPattern": {  "multiline": true, "consistent": true },
+      "ImportDeclaration": {  "multiline": true, "consistent": true },
+      "ExportDeclaration": {  "multiline": true, "consistent": true }
+    }],
+    "no-param-reassign": 0,
+    "no-continue": 0,
+    "no-restricted-syntax": 0,
+    "require-await": 0,
+    "no-return-await": 0,
+    "eslint-comments/no-use": 0,
+    "filenames/match-regex": 0,
+    "prettier/prettier": 0,
+    "i18n-text/no-en": 0,
+    "import/no-namespace": 0,
+    "no-unused-vars": 0,
+    "import/namespace": 0,
+    "no-constructor-return": 0,
+    "default-case-last": 0,
+    "no-undef": 0,
+    "import/named": 0,
+    "no-empty": ["error", {"allowEmptyCatch": true}],
+    "no-promise-executor-return": 0,
+    "@typescript-eslint/ban-ts-comment": ["warn", {
+      "ts-ignore": "allow-with-description"
+    }],
+    "@typescript-eslint/explicit-module-boundary-types": 0,
+    "@typescript-eslint/require-await": "error",
+    "no-void": "off",
+    "@typescript-eslint/no-floating-promises": "error",
+    "@typescript-eslint/return-await": ["error", "always"],
+
+    "import/no-unresolved": "off",
+    "import/extensions": ["error", "always", {
+      "js": "always",
+      "mjs": "never"
+    }],
+    "import/no-useless-path-segments": ["error", {
+      "noUselessIndex": false
+    }],
+    "import/order": ["error", {
+      "alphabetize": {
+        "caseInsensitive": false,
+        "order": "asc"
+      },
+      "groups": [
+        "builtin",
+        "external",
+        "parent",
+        "sibling",
+        "index"
+      ],
+      "newlines-between": "always",
+      "pathGroups": [{
+        "group": "external",
+        "pattern": "@dataprocs/**",
+        "position": "after"
+      }],
+      "pathGroupsExcludedImportTypes": ["builtin"]
+    }],
+    "import/prefer-default-export": 0,
+    "unicorn/switch-case-braces": 0,
+    "unicorn/no-useless-undefined": 0,
+    "unicorn/no-array-for-each": 0,
+    "unicorn/prefer-spread": 0,
+    "unicorn/no-null": 0,
+    "unicorn/filename-case": 0,
+    "unicorn/prefer-dom-node-append": 0,
+    "unicorn/prevent-abbreviations": 0,
+    "unicorn/explicit-length-check": 0,
+    "unicorn/catch-error-name": 0,
+    "unicorn/prefer-dom-node-dataset": 0,
+    "unicorn/no-array-reduce": 0,
+    "unicorn/no-this-assignment": 0,
+    "unicorn/prefer-ternary": ["error", "only-single-line"],
+    "unicorn/no-empty-file": 0,
+    "unicorn/prefer-query-selector": 0,
+    "unicorn/prefer-dom-node-remove": 0,
+    "unicorn/no-for-loop": 0,
+    "jsdoc/newline-after-description": [
+      "warn",
+      "never"
+    ],
+    "jsdoc/no-undefined-types": 0,
+    "jsdoc/require-param-description": 0,
+    "jsdoc/require-property-description": 0,
+    "jsdoc/require-returns": 0,
+    "jsdoc/require-returns-description": 0,
+    "jsdoc/valid-types": 0,
+    "max-len": ["error", 120, 2, {
+      "ignoreComments": true,
+      "ignoreRegExpLiterals": true,
+      "ignoreStrings": true,
+      "ignoreTemplateLiterals": true,
+      "ignoreUrls": true
+    }],
+    "consistent-return": "warn",
+    "no-console": ["error", {
+      "allow": [
+        "warn",
+        "error",
+        "time",
+        "timeEnd"
+      ]
+    }],
+    "no-plusplus": ["off"],
+    "node/no-unsupported-features/es-syntax": ["off", {
+      "ignores": [],
+      "version": ">=14.0.0"
+    }],
+    "prefer-destructuring": ["error", {
+      "AssignmentExpression": {
+        "array": false,
+        "object": false
+      },
+      "VariableDeclarator": {
+        "array": false,
+        "object": true
+      }
+    }, {
+      "enforceForRenamedProperties": false
+    }],
+    "sort-imports": ["error", {
+      "ignoreDeclarationSort": true
+    }],
+    "spaced-comment": ["error", "always", {
+      "block": {
+        "balanced": true,
+        "exceptions": ["-", "+"],
+        "markers": ["=", "!", ":", "::"]
+      },
+      "line": {
+        "exceptions": ["-", "+"],
+        "markers": ["=", "!", "/"]
+      }
+    }]
+  },
+  "settings": {
+    "jsdoc": {
+      "preferredTypes": {
+        "array": "Array",
+        "object": "Object",
+        "object.": "Object<>",
+        "object<>": "Object<>",
+        "symbol": "Symbol"
+      },
+      "tagNamePreference": {
+        "augment": "extends",
+        "constant": "const",
+        "property": "prop",
+        "returns": "return"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "files": [ "*.cjs"],
+      "rules": {
+        "import/no-nodejs-modules": 0,
+        "@typescript-eslint/no-var-requires": 0
+      }
+    }
+  ]
+  
+}

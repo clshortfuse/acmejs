@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "checkJs": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "noImplicitAny": true,
+    "resolveJsonModule": true,
+    "strict": false,
+    "target": "es2020",
+    "lib": ["ESNext", "DOM"],
+    "allowSyntheticDefaultImports": true
+  },
+  "exclude": [
+    "**/node_modules/*",
+    ".history/*"
+  ]
+}
