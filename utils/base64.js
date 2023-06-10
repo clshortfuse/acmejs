@@ -18,6 +18,7 @@ const BASE64URL_CODEPOINT_62 = BASE64URL_CHAR_62.codePointAt(0);
 const BASE64URL_CODEPOINT_63 = BASE64URL_CHAR_63.codePointAt(0);
 
 const BASE64_TABLE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+const BASE64URL_TABLE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 const BASE64_CHAR_TO_SEXTET_INDEX = new Map(Array.from(BASE64_TABLE).map((c, index) => [c, index]));
 const BASE64_CODEPOINT_TO_SEXTET_INDEX = new Map(Array.from(BASE64_TABLE).map((c, index) => [c.codePointAt(0), index]));
 const BASE64_SEXTET_TO_CHAR_INDEX = new Map(Array.from(BASE64_TABLE).map((c, index) => [index, c]));
@@ -157,6 +158,35 @@ export function encodeBase64AsString(source, url) {
   for (const sextet of sextetsFromOctets(iterableSource)) {
     count++;
     result += base64CharFromSextet(sextet, url);
+  }
+  if (!url) {
+    switch (count % 4) {
+      case 3:
+        return `${result}=`;
+      case 2:
+        return `${result}==`;
+      default:
+    }
+  }
+  return result;
+}
+
+/**
+ * Strips any non Base64 characters
+ * @param {string} source
+ * @param  {boolean} [url=false]
+ * @return {string}
+ */
+export function cleanBase64String(source, url) {
+  let result = '';
+
+  let count = 0;
+  const table = url ? BASE64URL_TABLE : BASE64_TABLE;
+  for (const char of source) {
+    if (table.includes(char)) {
+      count++;
+      result += char;
+    }
   }
   if (!url) {
     switch (count % 4) {
@@ -412,3 +442,5 @@ export const decodeBase64UrlAsArray = (source) => decodeBase64AsArray(source, tr
 export const decodeBase64UrlAsString = (source) => decodeBase64AsString(source, true);
 export const decodeBase64UrlAsUtf8 = (source) => decodeBase64AsUtf8(source, true);
 export const decodeBase64UrlAsASCII = (source) => decodeBase64AsASCII(source, true);
+
+export const cleanBase64UrlString = (source) => cleanBase64String(source, true);
