@@ -1,4 +1,4 @@
-// https://datatracker.ietf.org/doc/html/rfc7516
+// https://www.rfc-editor.org/rfc/rfc7516.html
 
 /**
  * For a JWE, the members of the JSON object(s) representing the JOSE
@@ -198,6 +198,43 @@
 /** @typedef {JWEFlattened | (JWEGeneral & Partial<Record<keyof JWERecipient,never>>)} JWEJSONSerialization */
 
 /** @typedef {JWECompactSerialization | JWEJSONSerialization} JWE */
+
+/**
+ * A Key Management Mode in which the CEK value is encrypted to the
+ * intended recipient using an asymmetric encryption algorithm.
+ * @typedef {'keyEncryption'} KeyEncryption
+ */
+
+/**
+ * A Key Management Mode in which the CEK value is encrypted to the
+ * intended recipient using a symmetric key wrapping algorithm.
+ * @typedef {'keyWrapping'} KeyWrapping
+ */
+
+/**
+ * A Key Management Mode in which a key agreement algorithm is used
+ * to agree upon the CEK value.
+ * @typedef {'directKeyAgreement'} DirectKeyAgreement
+ */
+
+/**
+ * A Key Management Mode in which a key agreement algorithm is used
+ * to agree upon a symmetric key used to encrypt the CEK value to the intended recipient using a symmetric key wrapping algorithm.
+ * @typedef {'keyAgreementWithKeyWrapping'} KeyAgreementWithKeyWrapping
+ */
+
+/**
+ * A Key Management Mode in which the CEK value used is the secret
+ * symmetric key value shared between the parties.
+ * @typedef {'directEncryption'} DirectEncryption
+ */
+
+/**
+ * A method of determining the Content Encryption Key value to use.
+ * Each algorithm used for determining the CEK value uses a specific
+ * Key Management Mode.
+ * @typedef {KeyEncryption|KeyWrapping|DirectKeyAgreement|KeyAgreementWithKeyWrapping|DirectEncryption} KeyManagementMode
+ */
 
 /**
  *

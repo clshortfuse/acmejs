@@ -1,4 +1,4 @@
-// https://datatracker.ietf.org/doc/html/rfc7517
+// https://www.rfc-editor.org/rfc/rfc7517.html
 
 /**
  *  A JWK is a JSON object that represents a cryptographic key.  The
