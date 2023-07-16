@@ -1,7 +1,7 @@
 /* eslint-disable no-bitwise */
 // https://datatracker.ietf.org/doc/html/rfc4648#section-4
 
-import { octetFromUtf8 } from './utf8.js';
+import { uint8ArrayFromUtf8 } from './utf8.js';
 
 const BASE64_CHAR_62 = '+';
 const BASE64_CHAR_63 = '/';
@@ -42,7 +42,7 @@ const BIT_MASK_8 = BIT_MASKS.get(8);
  */
 function toIterableUint8(source) {
   if (typeof source === 'string') {
-    return octetFromUtf8(source);
+    return uint8ArrayFromUtf8(source);
   }
   if (source instanceof Uint8Array) {
     return source;

@@ -1,7 +1,7 @@
 /* eslint-disable no-bitwise */
 
 import { decodeBase64AsArray } from '../base64.js';
-import { octetFromUtf8 } from '../utf8.js';
+import { uint8ArrayFromUtf8 } from '../utf8.js';
 
 // https://letsencrypt.org/docs/a-warm-welcome-to-asn1-and-der/
 
@@ -178,17 +178,16 @@ export function encodeDER(tag, entry) {
  */
 export function encodeUTF8String(utf8String) {
   // ASCII to Hex is the same as UTF8 to HEX (no check)
-  const entry = [...octetFromUtf8(utf8String)];
-  return encodeDER(ASN_TAG.UTF8_STRING, entry);
+  return encodeDER(ASN_TAG.UTF8_STRING, uint8ArrayFromUtf8(utf8String));
 }
 
 /**
  * @param {string} ia5String
- * @return {number[]}
+ * @return {ArrayLike<number>&Iterable<number>}
  */
 export function writeIA5String(ia5String) {
   // First 128 characters of ASCII (no check)
-  return [...octetFromUtf8(ia5String)];
+  return uint8ArrayFromUtf8(ia5String);
 }
 
 /**
@@ -326,8 +325,7 @@ export function encodeBitString(data, length = data.length * 8) {
 export function encodePrintableString(printableString) {
   // ASCII to Hex is the same as UTF8 to HEX
   // No checks here
-  const entry = [...octetFromUtf8(printableString)];
-  return encodeDER(ASN_TAG.PRINTABLE_STRING, entry);
+  return encodeDER(ASN_TAG.PRINTABLE_STRING, uint8ArrayFromUtf8(printableString));
 }
 
 /**

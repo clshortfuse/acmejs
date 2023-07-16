@@ -3,7 +3,7 @@
 
 import { parseAlgorithmIdentifier } from '../lib/jwa.js';
 
-import { octetFromUtf8 } from './utf8.js';
+import { uint8ArrayFromUtf8 } from './utf8.js';
 
 /** @type {Crypto} */
 // eslint-disable-next-line unicorn/no-await-expression-member
@@ -31,7 +31,7 @@ export async function importJWK(jwk, algorithmIdentifier) {
  * @return {Promise<ArrayBuffer>}
  */
 export async function sign(algorithmIdentifier, key, data) {
-  const binary = typeof data === 'string' ? Uint8Array.from(octetFromUtf8(data)) : data;
+  const binary = typeof data === 'string' ? uint8ArrayFromUtf8(data) : data;
   return await crypto.subtle.sign(algorithmIdentifier, key, binary);
 }
 
@@ -72,6 +72,6 @@ export async function decrypt(algorithmIdentifier, key, data) {
  * @return {Promise<ArrayBuffer>}
  */
 export async function digest(algorithm, data) {
-  const binary = typeof data === 'string' ? Uint8Array.from(octetFromUtf8(data)) : data;
+  const binary = typeof data === 'string' ? uint8ArrayFromUtf8(data) : data;
   return await crypto.subtle.digest(algorithm, binary);
 }

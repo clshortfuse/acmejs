@@ -43,3 +43,15 @@ export function* octetFromUtf8(utf8) {
     }
   }
 }
+
+/** @type {TextEncoder} */
+let textEncoder;
+
+/**
+ * @param {string} utf8
+ * @return {Uint8Array}
+ */
+export function uint8ArrayFromUtf8(utf8) {
+  textEncoder ??= new TextEncoder();
+  return textEncoder.encode(utf8);
+}

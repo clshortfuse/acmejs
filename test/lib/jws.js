@@ -1,7 +1,7 @@
 import { createES256JWK, createES512JWK, createHS256JWK, createRS256JWK } from '../../lib/jwa.js';
 import { decodeJSON, decodeJSONUnsafe, decodeString, decodeStringUnsafe, decodeUint8Array, decodeUint8ArrayUnsafe, signCompact, signObject, validate } from '../../lib/jws.js';
 import { decodeBase64AsString, decodeBase64UrlAsArray, encodeBase64UrlAsString } from '../../utils/base64.js';
-import { octetFromUtf8 } from '../../utils/utf8.js';
+import { uint8ArrayFromUtf8 } from '../../utils/utf8.js';
 import test from '../tester.js';
 
 const RFC7515_APPENDIX_A_JWS = 'eyJ0eXAiOiJKV1QiLA0KICJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ.dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
@@ -344,7 +344,7 @@ test('CVE-2015-9235 - Replicate setup', async (t) => {
   const header = { alg: 'HS256', typ: 'JWT' };
   const payload = { loggedInAs: 'admin', iat: 1_422_779_638 };
   const key = 'secretkey';
-  const hmacKey = new Uint8Array(octetFromUtf8(key));
+  const hmacKey = uint8ArrayFromUtf8(key);
   const symmetricalJWK = createHS256JWK({ k: hmacKey });
   const symmetricalJWS = await signCompact({
     protected: header,
@@ -360,7 +360,7 @@ test('CVE-2015-9235 - Validation should fail if token specifies alg:none though 
   const header = { alg: 'none', typ: 'JWT' };
   const payload = { loggedInAs: 'admin', iat: 1_422_779_638 };
   const key = 'secretkey';
-  const hmacKey = new Uint8Array(octetFromUtf8(key));
+  const hmacKey = uint8ArrayFromUtf8(key);
   const symmetricalJWK = createHS256JWK({ k: hmacKey });
 
   // Will not allow conflict when signing
