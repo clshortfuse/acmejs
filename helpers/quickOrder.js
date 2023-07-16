@@ -18,9 +18,11 @@ const LETS_ENCRYPT_DIRECTORY_URL = 'https://acme-v02.api.letsencrypt.org/directo
  */
 export async function processAuthorizations({ agent, urls, eventTarget }) {
   const authorizations = await agent.fetchAuthorizations(urls);
+  /** @type {(ChallengeBase & PendingChallenge & DNSChallenge)[]} */
   const challegesToValidate = [];
   const completedChallenges = [];
   const processingChallenges = [];
+  const pendingDNSChallenges = [];
   for (const authz of authorizations) {
     for (const challenge of authz.challenges) {
       switch (challenge.status) {
@@ -47,14 +49,37 @@ export async function processAuthorizations({ agent, urls, eventTarget }) {
           domain: authz.identifier.value,
         });
       }
-      if (await checkDnsTxt(`_acme-challenge.${authz.identifier.value}`, recordValue)) {
-        if (eventTarget) {
-          await dispatchExtendableEvent(eventTarget, 'challengeverified', challenge);
-        }
-        challegesToValidate.push(challenge);
-      }
+      pendingDNSChallenges.push({
+        challenge,
+        name: `_acme-challenge.${authz.identifier.value}`,
+        txt: recordValue,
+      });
     }
   }
+
+  const attemptTimestamp = new Map();
+  await Promise.all(pendingDNSChallenges.map(async function verifyDnsChallenge(dnsChallenge) {
+    const { challenge, name, txt } = dnsChallenge;
+    const now = performance.now();
+    if (await checkDnsTxt(name, txt)) {
+      if (eventTarget) {
+        await dispatchExtendableEvent(eventTarget, 'challengeverified', challenge);
+      }
+      challegesToValidate.push(challenge);
+    } else {
+      if (attemptTimestamp.has(challenge)) {
+        const timeSinceFirstAttempt = attemptTimestamp.get(challenge);
+        if (now - timeSinceFirstAttempt >= 60_000) {
+          throw new Error(`DNS verification failed for: ${name} ${txt}`);
+        }
+      } else {
+        attemptTimestamp.set(challenge, now);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      await verifyDnsChallenge(dnsChallenge);
+    }
+  }));
+
   for (const challenge of challegesToValidate) {
     await agent.validateChallenge(challenge);
   }
