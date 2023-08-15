@@ -104,16 +104,15 @@ const NAME_DOT_COM_TOKEN = 'bar';
 const certificate = await getWildcardCertificate({
   tosAgreed: true,
   domain: 'foo.com',
-  jwk: ACCOUNT_PRIVATE_KEY,
+  accountKey: ACCOUNT_PRIVATE_KEY,
   email: 'admin@foo.com',
   eventTarget: buildEventTarget(NAME_DOT_COM_USERNAME, NAME_DOT_COM_TOKEN),
-  csr: {
-    countryName: 'US',
-    localityName: 'New York',
-    organizationName: 'Foo Products',
-    organizationalUnitName: 'IT',
-    stateOrProvinceName: 'NY',
-    jwk: CSR_PRIVATE_KEY,
+  countryName: 'US',
+  localityName: 'New York',
+  organizationName: 'Foo Products',
+  organizationalUnitName: 'IT',
+  stateOrProvinceName: 'NY',
+  csrKey: CSR_PRIVATE_KEY,
   },
 });
 

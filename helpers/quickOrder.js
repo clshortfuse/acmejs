@@ -114,21 +114,21 @@ export async function authorizeOrder({ order, agent, eventTarget }) {
 }
 
 /**
- * @param {Object} options
- * @param {boolean} options.tosAgreed
- * @param {string} options.email
- * @param {JWK|string|Uint8Array} options.jwk Account JWK or PrivateKeyInformation (PKCS8)
- * @param {string} options.domain
- * @param {string} [options.orderUrl] existing order URL (blank for new)
- * @param {string} [options.directoryUrl] defaults to LetsEncrypt Production
- * @param {EventTarget} [options.eventTarget] used for async callbacks
- * @param {Object} options.csr
- * @param {string} [options.csr.organizationName]
- * @param {string} [options.csr.organizationalUnitName]
- * @param {string} [options.csr.localityName]
- * @param {string} [options.csr.stateOrProvinceName]
- * @param {string} [options.csr.countryName]
- * @param {JWK|string|Uint8Array} options.csr.jwk CSR JWK or PrivateKeyInformation (PKCS8)
+ * @typedef {Object} WildcardCertificateOrderOptions
+ * @prop {boolean} tosAgreed
+ * @prop {string} email
+ * @prop {JWK|string|Uint8Array} accountKey Account JWK or PrivateKeyInformation (PKCS8)
+ * @prop {string} domain
+ * @prop {string} [orderUrl] existing order URL (blank for new)
+ * @prop {string} [directoryUrl] defaults to LetsEncrypt Production
+ * @prop {EventTarget} [eventTarget] used for async callbacks
+ * @prop {string} [organizationName]
+ * @prop {string} [organizationalUnitName]
+ * @prop {string} [localityName]
+ * @prop {string} [stateOrProvinceName]
+ * @prop {string} [countryName]
+ * @prop {JWK|string|Uint8Array} csrKey CSR JWK or PrivateKeyInformation (PKCS8)
+ * @param {WildcardCertificateOrderOptions} options
  * @return {Promise<any>}
  */
 export async function getWildcardCertificate(options) {
@@ -137,18 +137,18 @@ export async function getWildcardCertificate(options) {
   /** @type {JWK} */
   let csrJWK;
 
-  if (typeof options.jwk === 'string' || options.jwk instanceof Uint8Array) {
-    const der = derFromPrivateKeyInformation(options.jwk);
+  if (typeof options.accountKey === 'string' || options.accountKey instanceof Uint8Array) {
+    const der = derFromPrivateKeyInformation(options.accountKey);
     accountJWK = await jwkFromPrivateKeyInformation(der, suggestImportKeyAlgorithm(der));
   } else {
-    accountJWK = options.jwk;
+    accountJWK = options.accountKey;
   }
 
-  if (typeof options.csr.jwk === 'string' || options.csr.jwk instanceof Uint8Array) {
-    const der = derFromPrivateKeyInformation(options.csr.jwk);
+  if (typeof options.csrKey === 'string' || options.csrKey instanceof Uint8Array) {
+    const der = derFromPrivateKeyInformation(options.csrKey);
     csrJWK = await jwkFromPrivateKeyInformation(der, suggestImportKeyAlgorithm(der));
   } else {
-    csrJWK = options.csr.jwk;
+    csrJWK = options.csrKey;
   }
 
   const agent = new ACMEAgent({
@@ -190,7 +190,11 @@ export async function getWildcardCertificate(options) {
     const csrDER = await createCSR({
       commonName: `*.${options.domain}`,
       altNames: [`*.${options.domain}`, options.domain],
-      ...options.csr,
+      countryName: options.countryName,
+      localityName: options.localityName,
+      organizationalUnitName: options.organizationalUnitName,
+      organizationName: options.organizationName,
+      stateOrProvinceName: options.stateOrProvinceName,
       jwk: csrJWK,
     });
     const csr = encodeBase64UrlAsString(csrDER);
