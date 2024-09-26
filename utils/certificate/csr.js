@@ -73,34 +73,37 @@ export async function createCSR(options) {
   const spki = await spkiFromJWK(extractPublicJWK(options.jwk), algorithmIdentifier);
   const SubjectPKInfo = derFromSPKI(spki);
 
-  let attributes;
+  /** @type {number[]} */
+  let attributeData = [];
   if (options.altNames?.length) {
     const extensionRequestAttributeOID = '1.2.840.113549.1.9.14';
     const subjectAltNameOID = '2.5.29.17';
 
-    const attributesTag = 0;
-    attributes = encodeDER(
-      // eslint-disable-next-line no-bitwise
-      ASN_CLASS.CONTEXT_SPECIFIC | ASN_CONSTRUCTED | attributesTag,
-      encodeAttribute(
-        extensionRequestAttributeOID,
-        encodeExtensions(
-          encodeExtension(
-            subjectAltNameOID,
-            encodeSubjectAltNameValue(
-              ...options.altNames.map((dnsName) => encodeDNSName(dnsName)),
-            ),
+    attributeData = encodeAttribute(
+      extensionRequestAttributeOID,
+      encodeExtensions(
+        encodeExtension(
+          subjectAltNameOID,
+          encodeSubjectAltNameValue(
+            ...options.altNames.map((dnsName) => encodeDNSName(dnsName)),
           ),
         ),
       ),
     );
   }
 
+  const attributesTag = 0;
+  const attributes = encodeDER(
+    // eslint-disable-next-line no-bitwise
+    ASN_CLASS.CONTEXT_SPECIFIC | ASN_CONSTRUCTED | attributesTag,
+    attributeData,
+  );
+
   const certificationRequestInfo = encodeSequence(
     encodeInteger(0), // Version
     subject, // Subject
     SubjectPKInfo, // SubjectPKInfo
-    attributes ?? [], // Attributes,
+    attributes, // Attributes,
   );
 
   const key = await importJWK({ ...options.jwk, key_ops: ['sign'] }, algorithmIdentifier);
