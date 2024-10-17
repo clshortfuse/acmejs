@@ -18,11 +18,11 @@ const LETS_ENCRYPT_DIRECTORY_URL = 'https://acme-v02.api.letsencrypt.org/directo
  */
 export async function processAuthorizations({ agent, urls, eventTarget }) {
   const authorizations = await agent.fetchAuthorizations(urls);
-  /** @type {(ChallengeBase & PendingChallenge & DNSChallenge)[]} */
+  /** @type {(ChallengeBase & PendingChallenge & (DNSChallenge|HttpChallenge))[]} */
   const challegesToValidate = [];
   const completedChallenges = [];
   const processingChallenges = [];
-  const pendingDNSChallenges = [];
+  const pendingChallenges = [];
   for (const authz of authorizations) {
     for (const challenge of authz.challenges) {
       switch (challenge.status) {
@@ -39,45 +39,69 @@ export async function processAuthorizations({ agent, urls, eventTarget }) {
         default:
           throw new Error(`Unknown challenge status: ${challenge.status}`);
       }
-      if (challenge.type !== 'dns-01') continue;
-      const recordName = '_acme-challenge';
-      const recordValue = await agent.buildKeyAuthorization(challenge);
-      if (eventTarget) {
-        await dispatchExtendableEvent(eventTarget, 'dnsrecordneeded', {
-          name: recordName,
-          value: recordValue,
+      if (challenge.type !== 'dns-01' && challenge.type !== 'http-01') continue;
+      const authorization = await agent.buildKeyAuthorization(challenge);
+      if (challenge.type === 'dns-01') {
+        if (eventTarget) {
+          await dispatchExtendableEvent(eventTarget, 'dnsrecordneeded', {
+            name: '_acme-challenge',
+            value: authorization,
+            domain: authz.identifier.value,
+          });
+        }
+      } else if (eventTarget) {
+        await dispatchExtendableEvent(eventTarget, 'httpresourceneeded', {
+          name: challenge.token,
+          value: authorization,
           domain: authz.identifier.value,
         });
       }
-      pendingDNSChallenges.push({
+      pendingChallenges.push({
         challenge,
-        name: `_acme-challenge.${authz.identifier.value}`,
-        txt: recordValue,
+        authorization,
+        identifier: authz.identifier.value,
       });
     }
   }
 
   const attemptTimestamp = new Map();
-  await Promise.all(pendingDNSChallenges.map(async function verifyDnsChallenge(dnsChallenge) {
-    const { challenge, name, txt } = dnsChallenge;
+  await Promise.race(pendingChallenges.map(async function verifyChallenge(pendingChallenge) {
+    if (challegesToValidate.length) return;
+    const { challenge, authorization, identifier } = pendingChallenge;
     const now = performance.now();
-    if (await checkDnsTxt(name, txt)) {
-      if (eventTarget) {
-        await dispatchExtendableEvent(eventTarget, 'challengeverified', challenge);
-      }
-      challegesToValidate.push(challenge);
+    let passed = false;
+    if (challenge.type === 'dns-01') {
+      passed = await checkDnsTxt(`_acme-challenge.${identifier}`, authorization);
     } else {
+      try {
+        const httpResponse = await fetch(`http://${identifier}/.well-known/acme-challenge/${challenge.token}`);
+        if (httpResponse.ok) {
+          const data = await httpResponse.text();
+          passed = (data === authorization);
+        }
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+    if (!passed) {
+      if (challegesToValidate.length) return;
       if (attemptTimestamp.has(challenge)) {
         const timeSinceFirstAttempt = attemptTimestamp.get(challenge);
         if (now - timeSinceFirstAttempt >= 60_000) {
-          throw new Error(`DNS verification failed for: ${name} ${txt}`);
+          throw new Error(`${challenge.type} verification failed for: ${identifier} ${authorization}`);
         }
       } else {
         attemptTimestamp.set(challenge, now);
       }
       await new Promise((resolve) => setTimeout(resolve, 5000));
-      await verifyDnsChallenge(dnsChallenge);
+      await verifyChallenge(pendingChallenge);
+      return;
     }
+
+    if (eventTarget) {
+      await dispatchExtendableEvent(eventTarget, 'challengeverified', challenge);
+    }
+    challegesToValidate.push(challenge);
   }));
 
   for (const challenge of challegesToValidate) {
@@ -151,6 +175,18 @@ export async function getWildcardCertificate(options) {
     csrJWK = options.csrKey;
   }
 
+  const csrDER = await createCSR({
+    commonName: `*.${options.domain}`,
+    altNames: [`*.${options.domain}`, options.domain],
+    countryName: options.countryName,
+    localityName: options.localityName,
+    organizationalUnitName: options.organizationalUnitName,
+    organizationName: options.organizationName,
+    stateOrProvinceName: options.stateOrProvinceName,
+    jwk: csrJWK,
+  });
+  const csr = encodeBase64UrlAsString(csrDER);
+
   const agent = new ACMEAgent({
     directoryUrl: options.directoryUrl || LETS_ENCRYPT_DIRECTORY_URL,
     jwk: accountJWK,
@@ -187,17 +223,97 @@ export async function getWildcardCertificate(options) {
   order = await agent.fetchOrder(orderUrl);
 
   if (order.status === 'ready') {
-    const csrDER = await createCSR({
-      commonName: `*.${options.domain}`,
-      altNames: [`*.${options.domain}`, options.domain],
-      countryName: options.countryName,
-      localityName: options.localityName,
-      organizationalUnitName: options.organizationalUnitName,
-      organizationName: options.organizationName,
-      stateOrProvinceName: options.stateOrProvinceName,
-      jwk: csrJWK,
+    order = await agent.finalizeOrder(order, csr);
+  }
+  if (order.status !== 'valid') throw new Error('Order not valid?');
+  const certificate = await agent.fetchCertificate(order);
+  return certificate;
+}
+
+/**
+ * @typedef {Object} HostnameCertificateOrderOptions
+ * @prop {boolean} tosAgreed
+ * @prop {string} email
+ * @prop {JWK|string|Uint8Array} accountKey Account JWK or PrivateKeyInformation (PKCS8)
+ * @prop {string} hostname
+ * @prop {string} [orderUrl] existing order URL (blank for new)
+ * @prop {string} [directoryUrl] defaults to LetsEncrypt Production
+ * @prop {EventTarget} [eventTarget] used for async callbacks
+ * @prop {string} [organizationName]
+ * @prop {string} [organizationalUnitName]
+ * @prop {string} [localityName]
+ * @prop {string} [stateOrProvinceName]
+ * @prop {string} [countryName]
+ * @prop {JWK|string|Uint8Array} csrKey CSR JWK or PrivateKeyInformation (PKCS8)
+ * @param {HostnameCertificateOrderOptions} options
+ * @return {Promise<any>}
+ */
+export async function getHostnameCertificate(options) {
+  /** @type {JWK} */
+  let accountJWK;
+  /** @type {JWK} */
+  let csrJWK;
+
+  if (typeof options.accountKey === 'string' || options.accountKey instanceof Uint8Array) {
+    const der = derFromPrivateKeyInformation(options.accountKey);
+    accountJWK = await jwkFromPrivateKeyInformation(der, suggestImportKeyAlgorithm(der));
+  } else {
+    accountJWK = options.accountKey;
+  }
+
+  if (typeof options.csrKey === 'string' || options.csrKey instanceof Uint8Array) {
+    const der = derFromPrivateKeyInformation(options.csrKey);
+    csrJWK = await jwkFromPrivateKeyInformation(der, suggestImportKeyAlgorithm(der));
+  } else {
+    csrJWK = options.csrKey;
+  }
+
+  const csrDER = await createCSR({
+    commonName: options.hostname,
+    countryName: options.countryName,
+    localityName: options.localityName,
+    organizationalUnitName: options.organizationalUnitName,
+    organizationName: options.organizationName,
+    stateOrProvinceName: options.stateOrProvinceName,
+    jwk: csrJWK,
+  });
+  const csr = encodeBase64UrlAsString(csrDER);
+
+  const agent = new ACMEAgent({
+    directoryUrl: options.directoryUrl || LETS_ENCRYPT_DIRECTORY_URL,
+    jwk: accountJWK,
+  });
+  await agent.fetchDirectory();
+  const account = await agent.createAccount({
+    termsOfServiceAgreed: options.tosAgreed,
+    contact: [`mailto:${options.email}`],
+  });
+  if (options.eventTarget) {
+    dispatchEvent(options.eventTarget, 'account', account);
+    dispatchEvent(options.eventTarget, 'accountUrl', agent.accountUrl);
+  }
+  let order;
+  if (options.orderUrl) {
+    order = await agent.fetchOrder(options.orderUrl);
+  } else {
+    order = await agent.createOrder({
+      identifiers: [
+        { type: 'dns', value: options.hostname },
+      ],
     });
-    const csr = encodeBase64UrlAsString(csrDER);
+  }
+  if (order.status === 'invalid') throw new Error('Invalid order!');
+  const orderUrl = agent.locations.get(order);
+  if (options.eventTarget) {
+    dispatchEvent(options.eventTarget, 'order', order);
+    if (orderUrl) {
+      dispatchEvent(options.eventTarget, 'orderUrl', order);
+    }
+  }
+  await authorizeOrder({ order, agent, eventTarget: options.eventTarget });
+  order = await agent.fetchOrder(orderUrl);
+
+  if (order.status === 'ready') {
     order = await agent.finalizeOrder(order, csr);
   }
   if (order.status !== 'valid') throw new Error('Order not valid?');
