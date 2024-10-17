@@ -13,7 +13,7 @@ export function derFromPEM(pem, header, footer) {
     if (splits.length === 1) {
       // No header, assume encoded DER
       content = pem;
-    } else if (splits.length === 5) {
+    } else if (splits.length >= 5) {
       content = splits[2];
     } else {
       throw new Error('Invalid PEM');

@@ -1,6 +1,6 @@
 /* eslint-disable no-bitwise */
 
-import { ASN_CONSTRUCTED, ASN_TAG } from './constants.js';
+import { ASN_CLASS, ASN_CONSTRUCTED, ASN_TAG } from './constants.js';
 
 // https://letsencrypt.org/docs/a-warm-welcome-to-asn1-and-der/
 
@@ -79,9 +79,39 @@ export function readSignedNumber(der) {
   return readNumber(der, true);
 }
 
+/** @type {TextDecoder} */
+let textDecoder;
+
+/**
+ * @param {Iterable<number>} der
+ * @return {string}
+ */
+export function readString(der) {
+  textDecoder ??= new TextDecoder();
+  const buffer = (der instanceof Uint8Array ? der : Uint8Array.from(der));
+  return textDecoder.decode(buffer);
+}
+
+/**
+ * @param {Iterable<number>} der
+ * @return {number}
+ */
+export function readUTCTime(der) {
+  const unparsed = readString(der);
+  const [
+    match,
+    year, month, date, hour, minute, second, tzSign, tzHour, tzMinute,
+  ] = /^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})?(?:Z|(?:([+-]\d{2})(\d{2})))?$/.exec(unparsed);
+  const yearInt = Number.parseInt(year, 10);
+  const century = yearInt >= 50 ? '19' : '20';
+  const isoString = `${century}${year}-${month}-${date}T${hour}:${minute}:${second ?? '00'}${tzSign ?? '+'}${tzHour ?? '00'}:${tzMinute ?? '00'}`;
+  const parsed = Date.parse(isoString);
+  return parsed;
+}
+
 /**
  * @param {number[]} der
- * @param {number} [offset=0]
+ * @param {number} [offset]
  * @return {{length:number|null, bytesRead: number}}
  */
 export function readLength(der, offset = 0) {
@@ -126,17 +156,32 @@ export function readObjectIdentifier(der) {
   return oid;
 }
 
+/**
+ * @param {number[]|Uint8Array} der
+ * @return {string}
+ */
+export function readBitString(der) {
+  const orphanedBits = der[0];
+  const bitLength = (der.length - 1) * 8 - orphanedBits;
+  const bitString = der.slice(1).map((byte) => byte.toString(2)).join('').slice(0, bitLength);
+  return bitString;
+}
+
 /** @typedef {['BOOLEAN', boolean]} DecodedBoolean */
 /** @typedef {['INTEGER', number|bigint]} DecodedInteger */
+/** @typedef {['BIT_STRING', string]} DecodedBitString */
+/** @typedef {['PRINTABLE_STRING', string]} DecodedPrintableString */
 /** @typedef {['UTF8_STRING', string]} DecodedUtf8String */
 /** @typedef {['OCTET_STRING', Uint8Array]} DecodedOctetString */
 /** @typedef {['OBJECT_IDENTIFIER', string]} DecodedObjectIdentifier */
+/** @typedef {['UTC_TIME', number]} DecodedTime */
 /** @typedef {['NULL', []]} DecodedNull */
 
-/** @typedef {DecodedBoolean|DecodedInteger|DecodedUtf8String|DecodedOctetString|DecodedObjectIdentifier|DecodedNull} DecodedEntry */
+/** @typedef {DecodedBoolean|DecodedInteger|DecodedBitString|DecodedPrintableString|DecodedUtf8String|DecodedOctetString|DecodedObjectIdentifier|DecodedNull|DecodedTime} DecodedEntry */
 
-/** @typedef {['SEQUENCE', (DecodedEntry|DecodedSequence|DecodedSet)[]]} DecodedSequence */
-/** @typedef {['SET', (DecodedEntry|DecodedSequence|DecodedSet)[]]} DecodedSet */
+/** @typedef {[number, (DecodedEntry|DecodedSequence|DecodedSet|DecodedContextSpecific)|(DecodedEntry|DecodedSequence|DecodedSet|DecodedContextSpecific)[]]} DecodedContextSpecific */
+/** @typedef {['SEQUENCE', (DecodedEntry|DecodedSequence|DecodedSet|DecodedContextSpecific)[]]} DecodedSequence */
+/** @typedef {['SET', (DecodedEntry|DecodedSequence|DecodedSet|DecodedContextSpecific)[]]} DecodedSet */
 
 /**
  * @param {Uint8Array} der
@@ -159,34 +204,47 @@ export function decodeDER(der) {
     }
 
     const type = tag & BIT_MASK_5;
-    switch (type) {
-      case ASN_TAG.BOOLEAN:
-        entries.push(['BOOLEAN', value[0] === 1]);
-        break;
-      case ASN_TAG.INTEGER:
-        entries.push(['INTEGER', readSignedNumber(value)]);
-        break;
-      case ASN_TAG.UTF8_STRING:
-        entries.push(['UTF8_STRING', new TextDecoder().decode(value)]);
-        break;
-      case ASN_TAG.OCTET_STRING:
-        entries.push(['OCTET_STRING', value]);
-        break;
-      case ASN_TAG.SEQUENCE:
-        entries.push(['SEQUENCE', value]);
-        break;
-      case ASN_TAG.SET:
-        entries.push(['SET', value]);
-        break;
-      case ASN_TAG.OBJECT_IDENTIFIER:
-        entries.push(['OBJECT_IDENTIFIER', readObjectIdentifier(value)]);
-        break;
-      case ASN_TAG.NULL:
-        entries.push(['NULL', value.length ? value : null]);
-        break;
-      default: {
-        console.warn('Unknown type', tag);
-        entries.push([tag, value]);
+    if (tag & ASN_CLASS.CONTEXT_SPECIFIC) {
+      entries.push([type, value]);
+    } else {
+      switch (type) {
+        case ASN_TAG.BOOLEAN:
+          entries.push(['BOOLEAN', value[0] === 1]);
+          break;
+        case ASN_TAG.BIT_STRING:
+          entries.push(['BIT_STRING', value]);
+          break;
+        case ASN_TAG.INTEGER:
+          entries.push(['INTEGER', readSignedNumber(value)]);
+          break;
+        case ASN_TAG.PRINTABLE_STRING:
+          entries.push(['PRINTABLE_STRING', readString(value)]);
+          break;
+        case ASN_TAG.UTF8_STRING:
+          entries.push(['UTF8_STRING', readString(value)]);
+          break;
+        case ASN_TAG.OCTET_STRING:
+          entries.push(['OCTET_STRING', value]);
+          break;
+        case ASN_TAG.SEQUENCE:
+          entries.push(['SEQUENCE', value]);
+          break;
+        case ASN_TAG.SET:
+          entries.push(['SET', value]);
+          break;
+        case ASN_TAG.OBJECT_IDENTIFIER:
+          entries.push(['OBJECT_IDENTIFIER', readObjectIdentifier(value)]);
+          break;
+        case ASN_TAG.NULL:
+          entries.push(['NULL', value.length ? value : null]);
+          break;
+        case ASN_TAG.UTC_TIME:
+          entries.push(['UTC_TIME', readUTCTime(value)]);
+          break;
+        default: {
+          console.warn('Unknown type', tag);
+          entries.push([tag, value]);
+        }
       }
     }
 
